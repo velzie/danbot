@@ -72,7 +72,7 @@ class danbooru():
 
         response = requests.post(url, params=params)
         if response.status_code == 201:
-            return "Post Creation Success"
+            return True
         else:
             return "Failed to create post"
 
@@ -91,7 +91,7 @@ class Bot(discord.Client):
         self.session = aiohttp.ClientSession()
         self.db = danbooru(self.session,os.environ["DBUSER"], os.environ["DBTOKEN"], os.environ["DBURL"])
 
-    async def on_message(self,message):
+    async def on_message(self,message: discord.Message):
         if message.channel.id != int(os.environ["CHANNELID"]):
             return
         if message.author == client.user:
@@ -107,13 +107,24 @@ class Bot(discord.Client):
 
         print(img)
 
+        if tags == "":
+            return
+        tags += " user:{}".format(message.author.global_name)
+
         session = aiohttp.ClientSession()
 
 
         resp = await session.get(img)
 
-        r = await self.db.create_post(await resp.content.read(),tags,"g",None)
-        await message.reply(r);
+        try: 
+            r = await self.db.create_post(await resp.content.read(),tags,"g",None)
+        except Exception as e:
+            return await message.reply("ERROR: " + e.__str__());
+
+        if r == True:
+            await message.add_reaction("✅")
+        else:
+            await message.reply(r);
 
 
         if message.content.startswith('.ping'):
